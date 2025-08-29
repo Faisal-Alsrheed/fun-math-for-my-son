@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numberblocks Math Snake - Fun Addition Game for Kids</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #87CEEB, #98FB98);
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Prevent default touch behaviors */
+            user-select: none; /* Prevent text selection on touch */
+        }
+
+        .game-container {
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+            box-shadow: none;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        h1 {
+            color: #FF6B6B;
+            font-size: 1.8em;
+            margin: 0 0 5px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .score {
+            color: #4ECDC4;
+        }
+
+        .target {
+            color: #FF6B6B;
+        }
+
+        .level {
+            color: #45B7D1;
+        }
+
+        #gameCanvas {
+            border: 3px solid #FFD93D;
+            border-radius: 0;
+            background: #F0F8FF;
+            display: block;
+            margin: 0;
+            width: calc(100vw - 6px);
+            height: calc(100vh - 6px);
+            box-sizing: border-box;
+            touch-action: none; /* Prevent scrolling/zooming on canvas */
+        }
+
+        .controls {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #666;
+        }
+
+        .instructions {
+            background: #FFF9C4;
+            border-radius: 15px;
+            padding: 10px;
+            margin-top: 10px;
+            border: 3px solid #FFD93D;
+            font-size: 0.9em;
+        }
+
+        .instructions h3 {
+            color: #FF6B6B;
+            margin-top: 0;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        .restart-btn {
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-top: 15px;
+        }
+
+        .restart-btn:hover {
+            background: #45B7D1;
+            transform: scale(1.05);
+        }
+
+        .celebration {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: none;
+            z-index: 1000;
+            animation: bounce 0.6s ease-in-out;
+        }
+
+        .level-complete {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 1000;
+            border: 3px solid #4CAF50;
+        }
+
+        .level-stats {
+            margin: 20px 0;
+            font-size: 1.2em;
+        }
+
+        .level-stats p {
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .progress-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            margin: 10px;
+            border-radius: 15px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            border: 2px solid #FFD93D;
+        }
+
+        .level-numbers {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #4ECDC4;
+            font-size: 1.1em;
+        }
+
+        .question-counter {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #45B7D1;
+            font-size: 1.1em;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background: #E0E0E0;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #DDD;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ECDC4, #45B7D1);
+            width: 0.5%;
+            transition: width 0.5s ease;
+            border-radius: 8px;
+        }
+
+        .milestones {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .milestone {
+            width: 3px;
+            height: 100%;
+            background: #FFD93D;
+            border-radius: 1px;
+            position: relative;
+        }
+
+        .milestone:first-child {
+            margin-left: 10%;
+        }
+
+        .milestone:last-child {
+            margin-right: 0;
+        }
+
+        .question-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            pointer-events: none;
+        }
+
+        .question-marker {
+            flex: 1;
+            height: 100%;
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .question-marker:last-child {
+            border-right: none;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 60%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-20px); }
+            80% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        .number-display {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .question-display {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 8px;
+            margin: 5px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #FFD93D;
+        }
+
+        .level-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .level-text {
+            color: #4ECDC4;
+        }
+
+        .progress-text {
+            color: #45B7D1;
+        }
+
+        .math-question {
+            font-size: 4em; /* Much bigger - doubled from 2em to 4em */
+            font-weight: bold;
+            color: #FF6B6B;
+            margin: 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.2); /* Stronger shadow for better visibility */
+            line-height: 1.2; /* Better spacing */
+        }
+
+        .answer-blocks {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .answer-block {
+            background: #4ECDC4;
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            padding: 20px 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            border: 3px solid #45B7D1;
+            transition: all 0.3s ease;
+            min-width: 80px;
+            text-align: center;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        .answer-block:hover {
+            background: #45B7D1;
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .answer-block.correct {
+            background: #4CAF50;
+            border-color: #45a049;
+            animation: grow 0.5s ease-in-out;
+        }
+
+        .answer-block.wrong {
+            background: #f44336;
+            border-color: #da190b;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        /* Starting Number Selection Dropdown */
+        .number-selection {
+            text-align: center;
+            margin: 10px 0 15px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            border: 2px solid #FFD93D;
+        }
+
+        .number-selection label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #FF6B6B;
+            margin-right: 10px;
+        }
+
+        .number-selection select {
+            font-size: 1.1em;
+            padding: 8px 12px;
+            border: 2px solid #4ECDC4;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .number-selection select:hover {
+            border-color: #FF6B6B;
+            background: #f0f8ff;
+        }
+
+        .number-selection select:focus {
+            outline: none;
+            border-color: #FF6B6B;
+            box-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
+        }
+
+        @keyframes grow {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Starting Number Selection -->
+        <div class="number-selection">
+            <label for="startingNumber">Choose Starting Number:</label>
+            <select id="startingNumber" onchange="changeStartingNumber()">
+                <option value="1">Start from 1 (Easy)</option>
+                <option value="10">Start from 10</option>
+                <option value="20">Start from 20</option>
+                <option value="30">Start from 30</option>
+                <option value="40">Start from 40</option>
+                <option value="50">Start from 50</option>
+                <option value="60">Start from 60</option>
+                <option value="70">Start from 70</option>
+                <option value="80">Start from 80</option>
+                <option value="90">Start from 90</option>
+                <option value="100">Start from 100</option>
+                <option value="10000">Start from 10,000 (CRAZY!) 🚀</option>
+                <option value="20000">Start from 20,000 (INSANE!) 🤯</option>
+                <option value="100000">Start from 100,000 (ULTIMATE!) 🔥</option>
+                <option value="1000000">Start from 1,000,000 (INSANE!) 💥</option>
+                <option value="100000000">Start from 100,000,000 (BEYOND INSANE!) 🌟</option>
+            </select>
+        </div>
+        
+        <!-- Simple Progress Bar -->
+        <div class="progress-container">
+            <div class="level-numbers">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+                <div class="question-markers" id="questionMarkers">
+                    <!-- 100 question markers will be generated by JavaScript -->
+                </div>
+                <div class="milestones">
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                    <div class="milestone"></div>
+                </div>
+            </div>
+            <div class="question-counter">Question <span id="currentQuestion">1</span>/100</div>
+        </div>
+
+        <div class="question-display">
+            <div class="math-question" id="mathQuestion">1 + 1 = ?</div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>Game Over!</h2>
+        <div class="number-display">Your Snake Had: <span id="finalScore">1</span> Ones!</div>
+        <button class="restart-btn" onclick="restartGame()">Play Again! 🎮</button>
+    </div>
+
+    <div class="celebration" id="celebration">
+        Great Job! 🎉
+    </div>
+
+    <div class="level-complete" id="levelComplete" style="display: none;">
+        <h2>Level Complete! 🎉</h2>
+        <div class="level-stats">
+            <p>You completed Level <span id="completedLevel">1</span>!</p>
+            <p>Snake Length: <span id="levelScore">5</span></p>
+        </div>
+        <button class="restart-btn" onclick="nextLevel()">Next Level! 🚀</button>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

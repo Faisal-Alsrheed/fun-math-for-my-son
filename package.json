@@ -1,0 +1,24 @@
+{
+  "name": "numberblocks-math-snake",
+  "version": "1.0.0",
+  "description": "Fun Numberblocks-inspired Snake game to teach 5-year-olds addition",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "game",
+    "math",
+    "kids",
+    "education",
+    "numberblocks",
+    "snake"
+  ],
+  "author": "Fun Math for Kids",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "path": "^0.12.7"
+  }
+}
