@@ -38,4 +38,4 @@ node server.js
 Then open http://localhost:3000
 
 ## Live Demo
-[Play the game here!](https://your-game-url.netlify.app)
+[Play the game here!](https://faisal-alsrheed.github.io/fun-math-for-my-son/)
