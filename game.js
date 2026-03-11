@@ -25,6 +25,10 @@ let currentQuestion = {};
 let usedQuestions = new Set(); // Track used questions to prevent repeats
 let selectedStartingNumber = 1; // Default starting number
 
+const MAX_PHYSICAL_SEGMENTS = 220;
+const MAX_DRAW_SEGMENTS = 140;
+const GAME_TICK_MS = 180;
+
 // Game grid - back to original size
 let gridSize = 40;
 let canvasWidth, canvasHeight;
@@ -58,7 +62,9 @@ let correctBlock = {
     value: 2,
     isCorrect: true,
     direction: {x: 0, y: 0}, // Movement direction
-    speed: 1 // How fast it moves
+    speed: 1, // How fast it moves
+    animal: '🐢',
+    label: 'Turtle'
 };
 
 let wrongBlock = {
@@ -67,7 +73,23 @@ let wrongBlock = {
     value: 3,
     isCorrect: false,
     direction: {x: 0, y: 0}, // Movement direction
-    speed: 1 // How fast it moves
+    speed: 1, // How fast it moves
+    animal: '🐌',
+    label: 'Snail'
+};
+
+const animalChoices = [
+    { emoji: '🐢', name: 'Turtle' },
+    { emoji: '🐌', name: 'Snail' },
+    { emoji: '🦥', name: 'Sloth' },
+    { emoji: '🐧', name: 'Penguin' },
+    { emoji: '🦆', name: 'Duck' }
+];
+
+const visualEffects = {
+    flashColor: null,
+    flashAlpha: 0,
+    particles: []
 };
 
 // Dynamic level configuration based on selected starting number
@@ -133,7 +155,7 @@ function init() {
     snake.segments = [];
     
     // OPTIMIZED: For huge numbers, only create visible segments + head
-    const maxPhysicalSegments = Math.min(selectedStartingNumber, 1000); // Limit physical segments
+    const maxPhysicalSegments = Math.min(selectedStartingNumber, MAX_PHYSICAL_SEGMENTS); // Limit physical segments
     snake.virtualLength = selectedStartingNumber; // Track the real length virtually
     
     for (let i = 0; i < maxPhysicalSegments; i++) {
@@ -217,7 +239,7 @@ function generateQuestion() {
     
     if (useSnakeLength) {
         // Use snake length as first number (traditional mode)
-        num1 = snake.body.length;
+        num1 = snake.virtualLength || snake.body.length;
         
         if (currentLevel === 1) {
             // Level 1: Add small numbers (1-3) to keep it simple
@@ -326,13 +348,24 @@ function generateQuestion() {
     // Set block values
     correctBlock.value = correctAnswer;
     wrongBlock.value = wrongAnswer;
+
+    // Pick two different slow animals, one is the correct answer target.
+    const firstAnimal = animalChoices[Math.floor(Math.random() * animalChoices.length)];
+    let secondAnimal = animalChoices[Math.floor(Math.random() * animalChoices.length)];
+    while (secondAnimal.emoji === firstAnimal.emoji) {
+        secondAnimal = animalChoices[Math.floor(Math.random() * animalChoices.length)];
+    }
+    correctBlock.animal = firstAnimal.emoji;
+    correctBlock.label = firstAnimal.name;
+    wrongBlock.animal = secondAnimal.emoji;
+    wrongBlock.label = secondAnimal.name;
     
     // Place blocks randomly on screen
     placeBlocks();
     
     // Update displays
-    document.getElementById('mathQuestion').textContent = 
-        `${currentQuestion.num1} + ${currentQuestion.num2} = ?`;
+    document.getElementById('mathQuestion').textContent =
+        `Catch the ${correctBlock.label}: ${currentQuestion.num1.toLocaleString()} + ${currentQuestion.num2.toLocaleString()} = ?`;
     
     updateProgressDisplay();
     
@@ -341,211 +374,48 @@ function generateQuestion() {
 
 // Flash red screen effect for wrong answers
 function flashRedScreen() {
-    // Create red overlay
-    const redOverlay = document.createElement('div');
-    redOverlay.style.position = 'fixed';
-    redOverlay.style.top = '0';
-    redOverlay.style.left = '0';
-    redOverlay.style.width = '100vw';
-    redOverlay.style.height = '100vh';
-    redOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
-    redOverlay.style.zIndex = '9999';
-    redOverlay.style.pointerEvents = 'none';
-    redOverlay.style.transition = 'opacity 0.3s ease';
-    
-    // Add to page
-    document.body.appendChild(redOverlay);
-    
-    // Remove after short time
-    setTimeout(() => {
-        redOverlay.style.opacity = '0';
-        setTimeout(() => {
-            if (redOverlay.parentNode) {
-                document.body.removeChild(redOverlay);
-            }
-        }, 300);
-    }, 200);
+    visualEffects.flashColor = '#ff4d4d';
+    visualEffects.flashAlpha = 0.35;
 }
 
 // Flash green screen with fireworks party effect for correct answers
 function flashGreenScreenWithFireworks() {
-    // Create green overlay
-    const greenOverlay = document.createElement('div');
-    greenOverlay.style.position = 'fixed';
-    greenOverlay.style.top = '0';
-    greenOverlay.style.left = '0';
-    greenOverlay.style.width = '100vw';
-    greenOverlay.style.height = '100vh';
-    greenOverlay.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
-    greenOverlay.style.zIndex = '9999';
-    greenOverlay.style.pointerEvents = 'none';
-    greenOverlay.style.transition = 'opacity 0.4s ease';
-    
-    // Add to page
-    document.body.appendChild(greenOverlay);
-    
-    // Create fireworks effect
+    visualEffects.flashColor = '#66ff99';
+    visualEffects.flashAlpha = 0.28;
+
+    // Lightweight canvas particles instead of heavy DOM fireworks.
     createFireworks();
-    
-    // Remove green overlay after extended celebration time
-    setTimeout(() => {
-        greenOverlay.style.opacity = '0';
-        setTimeout(() => {
-            if (greenOverlay.parentNode) {
-                document.body.removeChild(greenOverlay);
-            }
-        }, 500);
-    }, 3500); // Extended to 3.5 seconds!
 }
 
 // Create spectacular extended fireworks show
 function createFireworks() {
-    // Create multiple waves of fireworks over 3.5 seconds
-    
-    // Wave 1: Initial burst (0-0.8s)
-    for (let i = 0; i < 12; i++) {
-        setTimeout(() => {
-            createSingleFirework();
-        }, i * 70);
-    }
-    
-    // Wave 2: Second burst (1s-1.8s)
-    for (let i = 0; i < 10; i++) {
-        setTimeout(() => {
-            createSingleFirework();
-        }, 1000 + (i * 80));
-    }
-    
-    // Wave 3: Third burst (2s-2.8s)
-    for (let i = 0; i < 15; i++) {
-        setTimeout(() => {
-            createSingleFirework();
-        }, 2000 + (i * 55));
-    }
-    
-    // Wave 4: Grand finale (2.8s-3.5s)
-    for (let i = 0; i < 20; i++) {
-        setTimeout(() => {
-            createSingleFirework();
-        }, 2800 + (i * 35));
+    for (let i = 0; i < 50; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 4;
+        visualEffects.particles.push({
+            x: snake.body[0].x + gridSize / 2,
+            y: snake.body[0].y + gridSize / 2,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 40 + Math.floor(Math.random() * 25),
+            color: Math.random() > 0.5 ? '#ffd93d' : '#4ecdc4'
+        });
     }
 }
 
 // Create realistic firework explosion with multiple particles
 function createSingleFirework() {
-    // Random explosion center
-    const centerX = Math.random() * window.innerWidth;
-    const centerY = Math.random() * window.innerHeight;
-    
-    // Random bright color for this firework
-    const colors = ['#FFD700', '#FF69B4', '#00FF00', '#FF4500', '#9370DB', '#00CED1', '#FF1493', '#00FFFF'];
-    const fireworkColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    // Create 15-25 particles per firework for realistic explosion
-    const particleCount = 15 + Math.floor(Math.random() * 10);
-    
-    for (let i = 0; i < particleCount; i++) {
-        createFireworkParticle(centerX, centerY, fireworkColor, i);
-    }
-    
-    // Add bright flash at explosion center
-    createExplosionFlash(centerX, centerY, fireworkColor);
+    // Kept for backward compatibility; particles are created in createFireworks.
 }
 
 // Create individual particle that shoots out from explosion center
 function createFireworkParticle(centerX, centerY, color, particleIndex) {
-    const particle = document.createElement('div');
-    particle.style.position = 'fixed';
-    particle.style.width = '4px';
-    particle.style.height = '4px';
-    particle.style.borderRadius = '50%';
-    particle.style.zIndex = '10000';
-    particle.style.pointerEvents = 'none';
-    particle.style.backgroundColor = color;
-    particle.style.boxShadow = `0 0 8px ${color}, 0 0 16px ${color}`;
-    
-    // Start at explosion center
-    particle.style.left = centerX + 'px';
-    particle.style.top = centerY + 'px';
-    
-    document.body.appendChild(particle);
-    
-    // Random direction and speed for realistic spread
-    const angle = (Math.PI * 2 * particleIndex) / 20 + (Math.random() - 0.5) * 0.5;
-    const speed = 2 + Math.random() * 4;
-    const velocityX = Math.cos(angle) * speed;
-    const velocityY = Math.sin(angle) * speed;
-    
-    // Animate particle flying outward
-    let currentX = centerX;
-    let currentY = centerY;
-    let opacity = 1;
-    let gravity = 0.1;
-    let currentVelocityY = velocityY;
-    
-    const animateParticle = () => {
-        // Update position with physics
-        currentX += velocityX;
-        currentY += currentVelocityY;
-        currentVelocityY += gravity; // Gravity effect
-        
-        // Fade out over time
-        opacity -= 0.015;
-        
-        // Update particle position and opacity
-        particle.style.left = currentX + 'px';
-        particle.style.top = currentY + 'px';
-        particle.style.opacity = opacity;
-        
-        // Continue animation or cleanup
-        if (opacity > 0 && currentY < window.innerHeight + 100) {
-            requestAnimationFrame(animateParticle);
-        } else {
-            if (particle.parentNode) {
-                document.body.removeChild(particle);
-            }
-        }
-    };
-    
-    requestAnimationFrame(animateParticle);
+    // Kept for backward compatibility; particles are rendered in canvas.
 }
 
 // Create bright explosion flash at center
 function createExplosionFlash(x, y, color) {
-    const flash = document.createElement('div');
-    flash.style.position = 'fixed';
-    flash.style.width = '20px';
-    flash.style.height = '20px';
-    flash.style.borderRadius = '50%';
-    flash.style.zIndex = '10001';
-    flash.style.pointerEvents = 'none';
-    flash.style.backgroundColor = color;
-    flash.style.boxShadow = `0 0 30px ${color}, 0 0 60px ${color}, 0 0 90px ${color}`;
-    flash.style.left = (x - 10) + 'px';
-    flash.style.top = (y - 10) + 'px';
-    
-    document.body.appendChild(flash);
-    
-    // Animate bright flash
-    let scale = 1;
-    let opacity = 1;
-    const animateFlash = () => {
-        scale += 0.3;
-        opacity -= 0.08;
-        
-        flash.style.transform = `scale(${scale})`;
-        flash.style.opacity = opacity;
-        
-        if (opacity > 0) {
-            requestAnimationFrame(animateFlash);
-        } else {
-            if (flash.parentNode) {
-                document.body.removeChild(flash);
-            }
-        }
-    };
-    
-    requestAnimationFrame(animateFlash);
+    // Kept for backward compatibility.
 }
 
 // Update progress display
@@ -588,7 +458,7 @@ function placeBlocks() {
     
     // Set random direction for correct block
     correctBlock.direction = directions[Math.floor(Math.random() * directions.length)];
-    correctBlock.speed = 0.02; // Extremely slow - almost stationary
+    correctBlock.speed = 2; // Slow-moving target animal
     
     // Place wrong block in safe middle area (avoid snake area, edges, and keep distance from correct block)
     attempts = 0;
@@ -615,7 +485,7 @@ function placeBlocks() {
     if (availableDirections.length === 0) availableDirections = directions;
     
     wrongBlock.direction = availableDirections[Math.floor(Math.random() * availableDirections.length)];
-    wrongBlock.speed = 0.02; // Extremely slow - almost stationary
+    wrongBlock.speed = 2; // Slow-moving decoy animal
 }
 
 // Check if position is occupied by snake - OPTIMIZED FOR MILLIONS!
@@ -811,6 +681,24 @@ function updateBalloonPhysics() {
     balloon.y += balloon.velocityY;
 }
 
+function updateVisualEffects() {
+    if (visualEffects.flashAlpha > 0) {
+        visualEffects.flashAlpha = Math.max(0, visualEffects.flashAlpha - 0.03);
+    }
+
+    for (let i = visualEffects.particles.length - 1; i >= 0; i--) {
+        const p = visualEffects.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.04;
+        p.life -= 1;
+
+        if (p.life <= 0) {
+            visualEffects.particles.splice(i, 1);
+        }
+    }
+}
+
 // Update game state
 function update() {
     if (!gameRunning) return;
@@ -855,7 +743,7 @@ function update() {
         snake.virtualLength = (snake.virtualLength || snake.body.length) + growthAmount;
         
         // Only add physical segments if we're under the limit
-        const maxPhysicalSegments = 1000;
+        const maxPhysicalSegments = MAX_PHYSICAL_SEGMENTS;
         for (let i = 0; i < growthAmount && snake.body.length < maxPhysicalSegments; i++) {
             snake.segments.push(1);
             // Add body segments at the tail position
@@ -939,9 +827,10 @@ function showCelebration(message) {
 // Game win (all 10 levels completed)
 function gameWin() {
     gameRunning = false;
+    const finalLength = (snake.virtualLength || snake.body.length).toLocaleString();
     document.getElementById('gameOver').querySelector('h2').textContent = 'Congratulations! 🏆';
     document.getElementById('gameOver').querySelector('.number-display').innerHTML = 
-        `You completed all 10 levels!<br>Final Snake Length: <span id="finalScore">${snake.body.length}</span> Ones!`;
+        `You completed all 10 levels!<br>Final Snake Length: <span id="finalScore">${finalLength}</span> Ones!`;
     document.getElementById('gameOver').style.display = 'block';
 }
 
@@ -1027,6 +916,8 @@ function drawAnswerBlock(x, y, value, isCorrect) {
     // Both blocks look identical - kids must figure out which is correct!
     const color = '#4ECDC4'; // Same teal color for both blocks
     
+    const size = gridSize;
+
     ctx.fillStyle = color;
     ctx.fillRect(x, y, gridSize, gridSize);
     
@@ -1036,20 +927,21 @@ function drawAnswerBlock(x, y, value, isCorrect) {
     ctx.strokeRect(x, y, gridSize, gridSize);
     
     // Draw the number with background for better visibility
-    const numberY = y - 8;
-    const fontSize = Math.max(60, gridSize / 0.6); // GIGANTIC numbers - super easy to see!
+    const numberY = y - 10;
+    const digits = value.toString().length;
+    const fontSize = Math.max(16, Math.min(26, 46 - digits * 2));
     
     // Draw white background circle for the number
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
-    ctx.arc(x + gridSize/2, numberY, fontSize/2 + 10, 0, 2 * Math.PI); // Even bigger circle for bigger numbers
+    ctx.arc(x + size / 2, numberY, fontSize / 2 + 8, 0, 2 * Math.PI);
     ctx.fill();
     
     // Draw black border around the circle
     ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
             ctx.beginPath();
-    ctx.arc(x + gridSize/2, numberY, fontSize/2 + 10, 0, 2 * Math.PI); // Even bigger circle for bigger numbers
+            ctx.arc(x + size / 2, numberY, fontSize / 2 + 8, 0, 2 * Math.PI);
             ctx.stroke();
     
     // Draw the number in black
@@ -1057,7 +949,11 @@ function drawAnswerBlock(x, y, value, isCorrect) {
     ctx.font = `bold ${fontSize}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(value.toString(), x + gridSize/2, numberY);
+    ctx.fillText(value.toLocaleString(), x + size / 2, numberY);
+
+    const animalEmoji = isCorrect ? correctBlock.animal : wrongBlock.animal;
+    ctx.font = `${Math.max(18, size * 0.55)}px Arial`;
+    ctx.fillText(animalEmoji, x + size / 2, y + size / 2 + 2);
     
     // Draw one eye (center)
     const eyeSize = Math.max(6, gridSize / 8);
@@ -1065,12 +961,12 @@ function drawAnswerBlock(x, y, value, isCorrect) {
     
         ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
-        ctx.arc(x + gridSize/2, y + gridSize/3, eyeSize, 0, 2 * Math.PI);
+    ctx.arc(x + size / 2, y + size / 3, eyeSize, 0, 2 * Math.PI);
         ctx.fill();
         
         ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(x + gridSize/2, y + gridSize/3, pupilSize, 0, 2 * Math.PI);
+    ctx.arc(x + size / 2, y + size / 3, pupilSize, 0, 2 * Math.PI);
         ctx.fill();
         
     // Draw smile
@@ -1078,7 +974,7 @@ function drawAnswerBlock(x, y, value, isCorrect) {
     ctx.lineWidth = 2;
         ctx.beginPath();
     const mouthRadius = Math.max(6, gridSize / 6);
-    ctx.arc(x + gridSize/2, y + 2 * gridSize/3, mouthRadius, 0, Math.PI);
+    ctx.arc(x + size / 2, y + (2 * size) / 3, mouthRadius, 0, Math.PI);
     ctx.stroke();
 }
 
@@ -1096,15 +992,13 @@ function draw() {
     ctx.fillStyle = '#F0F8FF';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     
-    console.log('🎨 Drawing - Snake:', snake.body.length, 'Correct:', correctBlock.x, correctBlock.y, 'Wrong:', wrongBlock.x, wrongBlock.y);
-    
     // Draw the two answer blocks FIRST (in background)
     drawAnswerBlock(correctBlock.x, correctBlock.y, correctBlock.value, true);
     drawAnswerBlock(wrongBlock.x, wrongBlock.y, wrongBlock.value, false);
     
     // Draw snake as individual "One" blocks ON TOP - OPTIMIZED FOR MILLIONS!
     // Only draw visible segments for lightning speed with huge snakes
-    const maxVisibleSegments = Math.min(snake.body.length, 500); // Limit for speed
+    const maxVisibleSegments = Math.min(snake.body.length, MAX_DRAW_SEGMENTS); // Limit for speed
     for (let i = 0; i < maxVisibleSegments; i++) {
         const segment = snake.body[i];
         const isHead = (i === 0); // First segment is the head
@@ -1115,6 +1009,23 @@ function draw() {
     if (snake.body.length > 0) {
         const tail = snake.body[snake.body.length - 1];
         drawSnakeLengthBalloon(tail.x, tail.y, snake.virtualLength || snake.body.length);
+    }
+
+    if (visualEffects.flashAlpha > 0 && visualEffects.flashColor) {
+        ctx.fillStyle = visualEffects.flashColor;
+        ctx.globalAlpha = visualEffects.flashAlpha;
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        ctx.globalAlpha = 1;
+    }
+
+    for (let i = 0; i < visualEffects.particles.length; i++) {
+        const p = visualEffects.particles[i];
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life / 65);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -1153,7 +1064,7 @@ function drawSnakeLengthBalloon(tailX, tailY, length) {
     ctx.font = `bold ${Math.max(24, balloonRadius / 1.5)}px Comic Sans MS`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(length.toString(), balloonX, balloonY);
+    ctx.fillText(length.toLocaleString(), balloonX, balloonY);
     
     // Draw bigger balloon knot
     ctx.fillStyle = '#FFA500';
@@ -1165,7 +1076,7 @@ function drawSnakeLengthBalloon(tailX, tailY, length) {
 // Game over
 function gameOver() {
     gameRunning = false;
-    document.getElementById('finalScore').textContent = snake.body.length;
+    document.getElementById('finalScore').textContent = (snake.virtualLength || snake.body.length).toLocaleString();
     document.getElementById('gameOver').style.display = 'block';
 }
 
@@ -1184,7 +1095,7 @@ function restartGame() {
     snake.segments = [];
     
     // OPTIMIZED: For huge numbers, only create visible segments + head
-    const maxPhysicalSegments = Math.min(selectedStartingNumber, 1000); // Limit physical segments
+    const maxPhysicalSegments = Math.min(selectedStartingNumber, MAX_PHYSICAL_SEGMENTS); // Limit physical segments
     snake.virtualLength = selectedStartingNumber; // Track the real length virtually
     
     for (let i = 0; i < maxPhysicalSegments; i++) {
@@ -1216,10 +1127,11 @@ function restartGame() {
 // Game loop
 function gameLoop() {
     update();
+    updateVisualEffects();
     draw();
     
     if (gameRunning) {
-        setTimeout(gameLoop, 200); // Slow and gentle speed perfect for 5-year-olds
+        setTimeout(gameLoop, GAME_TICK_MS); // Slow and gentle speed perfect for 5-year-olds
     }
 }
 
